@@ -144,4 +144,23 @@ def _update_pitch_locations(date, team, inning, at_bat_number):
 
 
 if __name__ == "__main__":
-    app.server.run(port=8051, host='127.0.0.1', debug=True)
+    # Get port, host, and debug mode from environment variables
+    debug = os.environ.get("dash_debug")
+    host = os.environ.get("dash_host")
+    port = os.environ.get("dash_port")
+
+    # set defaults so that we can run from command line too
+    debug = True if debug == "True" else False
+    host = "0.0.0.0" if host is None else host
+    port = 8000 if port is None else port
+
+    print(
+        "Starting app.run_server(debug={0}, host='{1}', port={2})...".format(
+            debug, host, port
+        )
+    )
+
+    # run the app
+    app.run_server(debug=debug, host=host, port=port)
+
+    print("done.")
