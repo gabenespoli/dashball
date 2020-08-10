@@ -1,0 +1,23 @@
+.container {
+  /* display: flex; */
+  font-family: 'Open Sans', HelveticaNeue, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+.team-dropdown {
+  width: 40%;
+}
+
+.inning-dropdown {
+  width: 200px;
+}
+
+.pitch-locations {
+  width: 550px;
+}
+
