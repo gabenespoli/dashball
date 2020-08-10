@@ -1,4 +1,4 @@
-# %run statcast.py
+"""Dashball: Dashboard for baseball."""
 
 import os
 from datetime import datetime as dt
@@ -10,19 +10,18 @@ import pandas as pd
 import plotly.express as px
 from dash.dependencies import Input, Output
 
+from dash_utils import dcc_dropdown_div
+from utils import team_name
 
 # print("Loading data... ", end="")
-filename = "/Users/53gnespoli/local/private/data/mlb/statcast.parquet"
+filename = "./statcast.parquet"
 raw = pd.read_parquet(filename)
 raw = raw.rename(columns={"player_name": "pitcher_name"})
 # print("Done.")
 
-# %%
 # print("Adding batter names... ", end="")
 
-batters_filename = (
-    "/Users/53gnespoli/local/private/data/mlb/playerid_lookup_table.csv"
-)
+batters_filename = "./playerid_lookup_table.csv"
 ids = pd.read_csv(batters_filename)
 
 ids["batter_name"] = (
@@ -42,18 +41,17 @@ raw = raw.merge(
 
 # TODO: add batter_team
 
-# %%
 home_teams = list(raw["home_team"].unique())
 away_teams = list(raw["away_team"].unique())
 teams = home_teams + away_teams  # TODO: sort by name
 innings = list(raw["inning"].sort_values().unique())
 
-# %%
 # build the app
 app = dash.Dash(__name__)
 app.layout = html.Div(
-    [
-        html.H1(children="Game Day"),
+    id="container",
+    children=[
+        html.H1(children="Dashball"),
         dcc.DatePickerSingle(
             id="date-picker",
             min_date_allowed=dt(2013, 1, 1),
@@ -61,25 +59,22 @@ app.layout = html.Div(
             initial_visible_month=dt(2019, 7, 1),
             date=str(dt(2019, 7, 1)),
         ),
-        dcc.Dropdown(
+        dcc_dropdown_div(
             id="team-dropdown",
-            options=[{"label": x, "value": x} for x in teams],
-            value="TOR" if "TOR" in teams else teams[0],
-            style={"width": "40%"},
+            title="Team:",
+            opts=team_name(),
+            value="TOR",
         ),
         dcc.Dropdown(
             id="inning-dropdown",
             options=[{"label": x, "value": x} for x in innings],
             value=1,
-            style={"width": "30%"},
         ),
-        dcc.Dropdown(id="batter-dropdown", style={"width": "60%"},),
-        dcc.Graph(
-            id="pitch-locations",
-            style={"width": "75%", "display": "inline-block"},
-        ),
-    ]
+        dcc.Dropdown(id="batter-dropdown"),
+        dcc.Graph(id="pitch-locations"),
+    ],
 )
+
 
 @app.callback(
     Output("batter-dropdown", "options"),
@@ -137,30 +132,10 @@ def _update_pitch_locations(date, team, inning, at_bat_number):
         ],
         range_x=[-3, 3],
         range_y=[0, 6],
-        width=800,
-        height=800,
-        template="plotly_dark",
+        width=500,
+        height=500,
     )
 
 
 if __name__ == "__main__":
-    # Get port, host, and debug mode from environment variables
-    debug = os.environ.get("dash_debug")
-    host = os.environ.get("dash_host")
-    port = os.environ.get("dash_port")
-
-    # set defaults so that we can run from command line too
-    debug = True if debug == "True" else False
-    host = "0.0.0.0" if host is None else host
-    port = 8000 if port is None else port
-
-    print(
-        "Starting app.run_server(debug={0}, host='{1}', port={2})...".format(
-            debug, host, port
-        )
-    )
-
-    # run the app
-    app.run_server(debug=debug, host=host, port=port)
-
-    print("done.")
+    app.run_server()
