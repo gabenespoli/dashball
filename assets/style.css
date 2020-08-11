@@ -1,6 +1,6 @@
-.container {
+#container {
   /* display: flex; */
-  font-family: 'Open Sans', HelveticaNeue, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: "Open Sans", HelveticaNeue, "Helvetica Neue", Helvetica, Arial, sans-serif;
   position: relative;
   width: 100%;
   max-width: 960px;
@@ -9,15 +9,11 @@
   box-sizing: border-box;
 }
 
-.team-dropdown {
-  width: 40%;
-}
+/* .team-dropdown { */
+/*   width: 40%; */
+/* } */
 
-.inning-dropdown {
-  width: 200px;
-}
-
-.pitch-locations {
+#pitch-locations {
   width: 550px;
 }
 
