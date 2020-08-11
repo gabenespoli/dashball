@@ -7,12 +7,12 @@ live changes in the browser.
 
 1. Build the development image:
 ```
-docker build -t churn-dashboard-us-dev -f Dockerfile.dev .
+docker build -t dashball .
 ```
 
 2. Start the container:
 ```
-docker run -d -p 8050:8050 -v $(pwd):/app churn-dashboard-us-dev
+docker run -d -p 8051:8051 -v $(pwd):/app --name dashball dashball
 ```
 
-3. Open http://localhost:8050 in a web browser to view the dashboard.
+3. Open http://localhost:8051 in a web browser to view the dashboard.
