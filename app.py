@@ -9,55 +9,32 @@ import dash_html_components as html
 import pandas as pd
 import plotly.express as px
 from dash.dependencies import Input, Output
+from pybaseball import statcast
+from pybaseball import playerid_reverse_lookup
 
 from dash_utils import dcc_dropdown_div
 from utils import team_name
 
-# print("Loading data... ", end="")
-filename = "./statcast.parquet"
-raw = pd.read_parquet(filename)
-raw = raw.rename(columns={"player_name": "pitcher_name"})
-# print("Done.")
-
-# print("Adding batter names... ", end="")
-
-batters_filename = "./playerid_lookup_table.csv"
-ids = pd.read_csv(batters_filename)
-
-ids["batter_name"] = (
-    ids["name_first"].str.capitalize()
-    + " "
-    + ids["name_last"].str.capitalize()
-)
-
-raw = raw.merge(
-    ids[["key_mlbam", "batter_name"]],
-    how="left",
-    left_on="batter",
-    right_on="key_mlbam",
-)
-
-# print("Done.")
-
-# TODO: add batter_team
-
-home_teams = list(raw["home_team"].unique())
-away_teams = list(raw["away_team"].unique())
-teams = home_teams + away_teams  # TODO: sort by name
-innings = list(raw["inning"].sort_values().unique())
-
-# build the app
 app = dash.Dash(__name__)
+
 app.layout = html.Div(
     id="container",
     children=[
         html.H1(children="Dashball"),
-        dcc.DatePickerSingle(
-            id="date-picker",
-            min_date_allowed=dt(2013, 1, 1),
-            max_date_allowed=dt(2019, 12, 31),
-            initial_visible_month=dt(2019, 7, 1),
-            date=str(dt(2019, 7, 1)),
+        html.Div(
+            children=[
+                html.Label("Date:"),
+                html.Br(),
+                dcc.DatePickerSingle(
+                    id="date-picker",
+                    initial_visible_month=dt(2019, 7, 1),
+                    date=str(dt(2019, 7, 1).strftime("%Y-%m-%d")),
+                ),
+            ],
+            style={
+                "display": "inline-block",
+                "position": "relative",
+            },
         ),
         dcc_dropdown_div(
             id="team-dropdown",
@@ -65,30 +42,65 @@ app.layout = html.Div(
             opts=team_name(),
             value="TOR",
         ),
-        dcc.Dropdown(
-            id="inning-dropdown",
-            options=[{"label": x, "value": x} for x in innings],
-            value=1,
+        dcc_dropdown_div(
+            id="batter-dropdown",
+            title="Batter:",
         ),
-        dcc.Dropdown(id="batter-dropdown"),
         dcc.Graph(id="pitch-locations"),
+        html.Div(id="data-store", style={"display": "none"}),
     ],
 )
 
 
 @app.callback(
-    Output("batter-dropdown", "options"),
+    Output("data-store", "children"),
     [
         Input("date-picker", "date"),
         Input("team-dropdown", "value"),
-        Input("inning-dropdown", "value"),
+    ]
+)
+def update_data(date, team):
+    """Load game data using pybaseball's scraper.
+
+    Uses pybaseball.statcast and pybaseball.playerid_reverse_lookup to load
+    data from a specific game, and stores it as json in the user's browser
+    session in a hidden div.
+
+    """
+    print("Loading data from statcast... ")
+    raw = statcast(start_dt=date, end_dt=date, team=team)
+    raw = raw.rename(columns={"player_name": "pitcher_name"})
+
+    print("Adding batter names... ")
+    batter_ids = raw["batter"].unique()
+    batters = playerid_reverse_lookup(batter_ids, key_type="mlbam")
+    batters["batter_name"] = (
+        batters["name_first"].str.capitalize()
+        + " "
+        + batters["name_last"].str.capitalize()
+    )
+
+    raw = raw.merge(
+        batters[["key_mlbam", "batter_name"]],
+        how="left",
+        left_on="batter",
+        right_on="key_mlbam",
+    )
+
+    print("Done.")
+
+    return raw.to_json(date_format="iso", orient="split")
+
+
+@app.callback(
+    Output("batter-dropdown", "options"),
+    [
+        Input("data-store", "children"),
     ],
 )
-def _update_batter_dropdown(date, team, inning):
-    team_col = "home_team" if team in home_teams else "away_team"
-    df = raw[raw["game_date"] == date]
-    df = df[df[team_col] == team]
-    df = df[df["inning"] == inning]
+def _update_batter_dropdown(json_data):
+    # TODO: add batter_team
+    df = pd.read_json(json_data, orient="split")
     batters = (
         df[["batter_name", "home_team", "away_team", "at_bat_number"]]
         .sort_values("at_bat_number")
@@ -106,17 +118,12 @@ def _update_batter_dropdown(date, team, inning):
 @app.callback(
     Output("pitch-locations", "figure"),
     [
-        Input("date-picker", "date"),
-        Input("team-dropdown", "value"),
-        Input("inning-dropdown", "value"),
+        Input("data-store", "children"),
         Input("batter-dropdown", "value"),
     ],
 )
-def _update_pitch_locations(date, team, inning, at_bat_number):
-    team_col = "home_team" if team in home_teams else "away_team"
-    df = raw[raw["game_date"] == date]
-    df = df[df[team_col] == team]
-    df = df[df["inning"] == inning]
+def _update_pitch_locations(json_data, at_bat_number):
+    df = pd.read_json(json_data, orient="split")
     df = df[df["at_bat_number"] == at_bat_number]
     return px.scatter(
         df,
