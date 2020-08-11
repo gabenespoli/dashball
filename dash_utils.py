@@ -79,7 +79,7 @@ def dcc_dropdown_div(
 
     return html.Div(
         [
-            title,
+            html.Label(title),
             dcc.Dropdown(
                 id=id,
                 options=options,
