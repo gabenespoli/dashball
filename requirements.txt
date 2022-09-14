@@ -1,8 +1,3 @@
-dash
-dash-bootstrap-components
-dash-mantine-components
-flask
-flask-caching
-gunicorn
 pandas
 pybaseball
+streamlit
