@@ -1,4 +1,5 @@
 pandas
 plotly
+pyarrow
 pybaseball
 streamlit
